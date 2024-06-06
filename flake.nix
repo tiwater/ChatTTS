@@ -1,9 +1,15 @@
 {
   description = "A Nix-flake-based Python development environment";
 
-  inputs.nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1.0.tar.gz";
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
+    nix-gl-host = {
+      url = "github:numtide/nix-gl-host";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
 
-  outputs = { self, nixpkgs }:
+  outputs = { self, nixpkgs, nix-gl-host }:
     let
       supportedSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
       forEachSupportedSystem = f: nixpkgs.lib.genAttrs supportedSystems (system: f {
@@ -11,6 +17,10 @@
           inherit system;
           config = {
             allowUnfree = true;
+            cudaSupport = true;
+            permittedInsecurePackages = [
+              "python3.11-gradio-3.44.3"
+            ];
           };
         };
       });
@@ -20,6 +30,7 @@
         default = pkgs.mkShell {
           venvDir = "venv";
           packages = with pkgs; [ python311 ] ++
+            [ nix-gl-host.defaultPackage.${system} ] ++
             (with pkgs.python311Packages; [
               pip
               venvShellHook
@@ -52,7 +63,6 @@
                   torch
                 ];
               })
-              transformers
               (buildPythonPackage rec {
                 pname = "vocos";
                 version = "0.1.0";
@@ -65,12 +75,41 @@
                 propagatedBuildInputs = [ ];
                 doCheck = false;
               })
+              (buildPythonPackage rec {
+                pname = "WeTextProcessing";
+                version = "1.0.0";
+                src = fetchPypi {
+                  inherit pname version;
+                  hash = "sha256-D5++ZEcDyyrzfDQYJ0FFHt4ISywMjUh5SxoRhJsyVlE="; # pkgs.lib.fakeHash;
+                };
+                patches = [ ./nix/fix-wetext-processing.patch ];
+                propagatedBuildInputs = [ ];
+                doCheck = false;
+              })
+              (buildPythonPackage rec {
+                pname = "pynini";
+                version = "2.1.5.post2";
+                pyproject = true;
+                src = fetchPypi {
+                  inherit pname version;
+                  hash = "sha256-giHniMd6OLT4DTR9pVyeL1QcDmQZepsphWafiEwl+H8="; # pkgs.lib.fakeHash;
+                };
+                propagatedBuildInputs = [ setuptools cython openfst ];
+                doCheck = false;
+              })
               ipython
 
               gradio
               torchaudio
               encodec
+              scipy
+              transformers
+              frozendict
+              regex
             ]);
+          shellHook = ''
+            export LD_LIBRARY_PATH="$(nixglhost -p):$LD_LIBRARY_PATH"
+          '';
         };
       });
     };
