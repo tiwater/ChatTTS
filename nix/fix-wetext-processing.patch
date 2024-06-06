@@ -1,0 +1,47 @@
+diff --git a/setup.py b/setup.py
+index 2c37a62..fbbd913 100644
+--- a/setup.py
++++ b/setup.py
+@@ -11,12 +11,12 @@
+ # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ # See the License for the specific language governing permissions and
+ # limitations under the License.
+-import sys
++# import sys
+ 
+ from setuptools import setup, find_packages
+ 
+-version = sys.argv[-1].split('=')[1]
+-sys.argv = sys.argv[0:len(sys.argv) - 1]
++version = "1.0.0"
++# sys.argv = sys.argv[0:len(sys.argv) - 1]
+ 
+ with open("README.md", "r", encoding="utf8") as fh:
+     long_description = fh.read()
+@@ -33,19 +33,22 @@ setup(
+     packages=find_packages(),
+     package_data={
+         "tn": [
+-            "*.fst", "chinese/data/*/*.tsv", "english/data/*/*.tsv",
+-            "english/data/*.tsv", "english/data/*/*.far"
++            "*.fst",
++            "chinese/data/*/*.tsv",
++            "english/data/*/*.tsv",
++            "english/data/*.tsv",
++            "english/data/*/*.far",
+         ],
+         "itn": ["*.fst", "chinese/data/*/*.tsv"],
+     },
+-    install_requires=['pynini==2.1.5', 'importlib_resources'],
++    install_requires=["pynini==2.1.5", "importlib_resources"],
+     entry_points={
+         "console_scripts": [
+             "wetn = tn.main:main",
+             "weitn = itn.main:main",
+         ]
+     },
+-    tests_require=['pytest'],
++    tests_require=["pytest"],
+     classifiers=[
+         "Programming Language :: Python :: 3",
+         "Operating System :: OS Independent",
