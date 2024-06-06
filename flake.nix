@@ -18,9 +18,6 @@
           config = {
             allowUnfree = true;
             cudaSupport = true;
-            permittedInsecurePackages = [
-              "python3.11-gradio-3.44.3"
-            ];
           };
         };
       });
