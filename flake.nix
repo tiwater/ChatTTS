@@ -2,14 +2,15 @@
   description = "A Nix-flake-based Python development environment";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
+    nix-ros-overlay.url = "github:lopsided98/nix-ros-overlay";
+    nixpkgs.follows = "nix-ros-overlay/nixpkgs"; # IMPORTANT!!!
     nix-gl-host = {
       url = "github:numtide/nix-gl-host";
-      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.nixpkgs.follows = "nix-ros-overlay/nixpkgs";
     };
   };
 
-  outputs = { self, nixpkgs, nix-gl-host }:
+  outputs = { nixpkgs, nix-gl-host, ... }:
     let
       supportedSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
       forEachSupportedSystem = f: nixpkgs.lib.genAttrs supportedSystems (system: f {
@@ -31,11 +32,12 @@
             (with pkgs.python311Packages; [
               pip
               venvShellHook
+              python-lsp-server
 
               torch
               omegaconf
               tqdm
-              einops
+
               (buildPythonPackage rec {
                 pname = "vector_quantize_pytorch";
                 version = "1.14.24";
@@ -46,7 +48,18 @@
                 };
                 propagatedBuildInputs = [
                   hatchling
-                  einops
+                  (buildPythonPackage rec {
+                    pname = "einops";
+                    version = "0.8.0";
+                    src = fetchPypi {
+                      inherit pname version;
+                      hash = "sha256-Y0hlF/7TRXEqg4XBAMsnkQjZ1H5q5ZCZsHZX6YPeroU="; # pkgs.lib.fakeHash;
+                    };
+                    pyproject = true;
+                    nativeBuildInputs = [ hatchling ];
+                    propagatedBuildInputs = [ ];
+                    doCheck = false;
+                  })
                   (buildPythonPackage rec {
                     pname = "einx";
                     version = "0.2.2";
@@ -91,7 +104,19 @@
                   inherit pname version;
                   hash = "sha256-giHniMd6OLT4DTR9pVyeL1QcDmQZepsphWafiEwl+H8="; # pkgs.lib.fakeHash;
                 };
-                propagatedBuildInputs = [ setuptools cython openfst ];
+                propagatedBuildInputs = [
+                  setuptools
+                  (buildPythonPackage rec {
+                    pname = "Cython";
+                    version = "3.0.10";
+                    src = fetchPypi {
+                      inherit pname version;
+                      hash = "sha256-3MlnOTMfuFTc9QP5RgdXbP6EiAZsYcpQ39VYNvEy3pk="; # pkgs.lib.fakeHash;
+                    };
+                    doCheck = false;
+                  })
+                  openfst
+                ];
                 doCheck = false;
               })
               ipython
@@ -104,8 +129,20 @@
               frozendict
               regex
             ]);
-          shellHook = ''
+          shellHook = /* bash */ ''
             export LD_LIBRARY_PATH="$(nixglhost -p):$LD_LIBRARY_PATH"
+
+            # venvShellHook
+            if [[ -v venvDir ]]; then
+              if [[ -d "$venvDir" ]]; then
+                printf "%s\n" "Skipping venv creation, '$venvDir' already exists"
+                source "$venvDir/bin/activate"
+              else
+                printf "%s\n" "Creating new venv environment in path: '$venvDir'"
+                python -m venv "$venvDir"
+                source "$venvDir/bin/activate"
+              fi
+            fi
           '';
         };
       });
